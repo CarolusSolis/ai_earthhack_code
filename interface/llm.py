@@ -1,6 +1,14 @@
 from openai import OpenAI
+import dotenv
+import os
 
 import pandas as pd
+
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # if the key already exists in the environment variables, it will use that, otherwise it will use the .env file to get the key
+if not OPENAI_API_KEY:
+    dotenv.load_dotenv(".env")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 
 FILTER_INSTRUCTION = """
@@ -21,8 +29,8 @@ Please note that the summary should be concise and to the point, and should not 
 """
 
 class LLM():
-    def __init__(self, api_key):
-        self.client = OpenAI(api_key)
+    def __init__(self):
+        self.client = OpenAI()
 
     def get_response(self, instruction, item):
         response = self.client.chat.completions.create(
@@ -43,23 +51,21 @@ class LLM():
             )
         
         # extract message from response
-        message = response.choices[0].text
+        message = response.choices[0].message.content
         return message
     
     def idea_to_prompt(self, idea):
         # idea is a df row with columns question, solution
-        question = idea['question']
+        question = idea['problem']
         solution = idea['solution']
-        item = "QUESTION: " + question + "\nSOLUTION: " + solution
+        item = "PROBLEM: " + str(question) + "\nSOLUTION: " + str(solution)
         return item
     
     def get_filter_response(self, idea):
-        # idea is a df row with columns question, solution
         item = self.idea_to_prompt(idea)
         return self.get_response(FILTER_INSTRUCTION, item)
     
     def get_summary_response(self, idea):
-        # idea is a df row with columns question, solution
         item = self.idea_to_prompt(idea)
         return self.get_response(SUMMARY_INSTRUCTION, item)
     
@@ -67,7 +73,6 @@ class LLM():
         """
         returns a tuple: (BOOL(pass or not), message)
         """
-        # idea is a df row with columns question, solution
         response = self.get_filter_response(idea)
         # extract the last /PASS/ or /FAIL/ from the response
         last_pass = response.rfind("/PASS/")

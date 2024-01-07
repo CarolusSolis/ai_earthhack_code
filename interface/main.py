@@ -1,6 +1,5 @@
 import os
 import time
-import dotenv
 
 import streamlit as st
 from openai import OpenAI
@@ -9,10 +8,7 @@ import requests
 import pandas as pd
 from tqdm import tqdm
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # if the key already exists in the environment variables, it will use that, otherwise it will use the .env file to get the key
-if not OPENAI_API_KEY:
-    dotenv.load_dotenv(".env")
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+from llm import LLM
 
 # Initialize session state variables
 if 'data' not in st.session_state:
@@ -24,7 +20,7 @@ if 'table_page' not in st.session_state:
 if 'flashcard_index' not in st.session_state:
     st.session_state['flashcard_index'] = 0
 
-client = OpenAI()
+llm = LLM()
 
 # ------------------ Names ------------------
 TABLE_PAGE_NAME = "Ratings Table"
@@ -48,6 +44,7 @@ def upload_page():
     st.title("Upload CSV File")
     st.session_state['uploaded_file'] = st.file_uploader("Upload your CSV file here", type="csv")
     if st.session_state['uploaded_file'] is not None:
+        print("File uploaded")
         process_file()
       
 
@@ -95,8 +92,7 @@ def process_file():
         # Analyze the data
         df = analyze(df)
         # Selecting only the columns that we need
-        df = df[['problem', 'solution']]  # TODO: add whatever columns we want to display
-        # df = df[['summary', 'ratings', 'problem', 'solution']]
+        df = df[['summary', 'problem', 'solution', 'analysis']]
         # Store the DataFrame in the session state
         st.session_state['data'] = df
         # Automatically switch to the display page after uploading 
@@ -104,10 +100,20 @@ def process_file():
         st.session_state['page'] = TABLE_PAGE_NAME
 
 def analyze(df):
-   # TODO: add llama2 or gpt4 api calls here, use these to fill out df['rating'], df['analysis'] or whichever columns we want to add
-   # add a summary column
-   for index, row in tqdm(df.iterrows()):
-      # do api call, fill in df['rating'] and df['analysis'], discard filtered rows
-      # requests.get(...)  # backend api call
-      pass
-   return df
+  print("Analyzing...")
+  # Initialize a progress bar
+  st.write("Analyzing...")
+  progress_bar = st.progress(0)
+  length = len(df)  # length of df changes as we drop rows
+  for index, row in tqdm(df.iterrows(), total=length):
+    progress = index / length
+    progress_bar.progress(progress)
+
+    passed, response = llm.filter(row)
+    if not passed:
+        df.drop(index, inplace=True)
+        continue
+    df.loc[index, 'summary'] = llm.get_summary_response(row)
+    df.loc[index, 'analysis'] = response
+  progress_bar.progress(1.0)
+  return df
