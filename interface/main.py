@@ -62,6 +62,7 @@ def table_page():
 
 def flashcard_page():
     st.title('Flashcards')
+    flashcards = st.session_state['data'].to_dict('records')
 
     if st.session_state['data'] is not None:
       selected_index = st.selectbox("Choose a flashcard", range(len(flashcards)), index=st.session_state['flashcard_index'])
@@ -76,7 +77,6 @@ def flashcard_page():
         if st.button("Next"):
             st.session_state['flashcard_index'] = min(len(flashcards) - 1, st.session_state['flashcard_index'] + 1)
 
-      flashcards = st.session_state['data'].to_dict('records')
       flashcard = flashcards[selected_index]
       st.subheader(flashcard["problem"])
       st.write(flashcard["solution"])
@@ -95,6 +95,7 @@ def process_file():
         df = analyze(df)
         # Selecting only the columns that we need
         df = df[['problem', 'solution']]  # TODO: add whatever columns we want to display
+        # df = df[['summary', 'ratings', 'problem', 'solution']]
         # Store the DataFrame in the session state
         st.session_state['data'] = df
         # Automatically switch to the display page after uploading 
@@ -103,4 +104,8 @@ def process_file():
 
 def analyze(df):
    # TODO: add llama2 or gpt4 api calls here, use these to fill out df['rating'], df['analysis'] or whichever columns we want to add
+   for index, row in df.iterrows():
+      # do api call, fill in df['rating'] and df['analysis'], discard filtered rows
+      # requests.get(...)  # backend api call
+      pass
    return df
