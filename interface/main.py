@@ -1,17 +1,14 @@
 import os
 import time
-import dotenv
 
 import streamlit as st
 from openai import OpenAI
 import requests
 
 import pandas as pd
+from tqdm import tqdm
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # if the key already exists in the environment variables, it will use that, otherwise it will use the .env file to get the key
-if not OPENAI_API_KEY:
-    dotenv.load_dotenv(".env")
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+from llm import LLM
 
 # Initialize session state variables
 if 'data' not in st.session_state:
@@ -23,7 +20,7 @@ if 'table_page' not in st.session_state:
 if 'flashcard_index' not in st.session_state:
     st.session_state['flashcard_index'] = 0
 
-client = OpenAI()
+llm = LLM()
 
 # ------------------ Names ------------------
 TABLE_PAGE_NAME = "Ratings Table"
@@ -47,13 +44,13 @@ def upload_page():
     st.title("Upload CSV File")
     st.session_state['uploaded_file'] = st.file_uploader("Upload your CSV file here", type="csv")
     if st.session_state['uploaded_file'] is not None:
+        print("File uploaded")
         process_file()
       
 
 def table_page():
     st.title("Ratings Table")
     if st.session_state['data'] is not None:
-        st.write("Uploaded Data:")
         st.dataframe(st.session_state['data'])
         # TODO: add pagination
     else:
@@ -78,8 +75,9 @@ def flashcard_page():
             st.session_state['flashcard_index'] = min(len(flashcards) - 1, st.session_state['flashcard_index'] + 1)
 
       flashcard = flashcards[selected_index]
-      st.subheader(flashcard["problem"])
-      st.write(flashcard["solution"])
+      st.subheader(flashcard["summary"])
+      st.write("Problem: " + str(flashcard["problem"]))
+      st.write("Solution: " + str(flashcard["solution"]))
     else:
         st.write("No data uploaded. Please upload a CSV file in the Upload page.")
    
@@ -94,8 +92,7 @@ def process_file():
         # Analyze the data
         df = analyze(df)
         # Selecting only the columns that we need
-        df = df[['problem', 'solution']]  # TODO: add whatever columns we want to display
-        # df = df[['summary', 'ratings', 'problem', 'solution']]
+        df = df[['summary', 'problem', 'solution', 'analysis', 'innovation_score', 'feasibility_score']]
         # Store the DataFrame in the session state
         st.session_state['data'] = df
         # Automatically switch to the display page after uploading 
@@ -103,9 +100,27 @@ def process_file():
         st.session_state['page'] = TABLE_PAGE_NAME
 
 def analyze(df):
-   # TODO: add llama2 or gpt4 api calls here, use these to fill out df['rating'], df['analysis'] or whichever columns we want to add
-   for index, row in df.iterrows():
-      # do api call, fill in df['rating'] and df['analysis'], discard filtered rows
-      # requests.get(...)  # backend api call
-      pass
-   return df
+  print("Analyzing...")
+  # Initialize a progress bar
+  st.write("Analyzing... each entry takes about 10 seconds")
+  progress_bar = st.progress(0)
+  length = len(df)  # length of df changes as we drop rows
+  for index, row in tqdm(df.iterrows(), total=length):
+    progress = index / length
+    progress_bar.progress(progress)
+
+    filter_response = llm.filter(row)
+    response = filter_response['response']
+    passed = filter_response['passed']
+    innovation_score = filter_response['innovation_score']
+    feasibility_score = filter_response['feasibility_score']
+    if not passed:
+        df.drop(index, inplace=True)
+        continue
+    df.loc[index, 'summary'] = llm.get_summary_response(row)
+    df.loc[index, 'analysis'] = response
+    df.loc[index, 'innovation_score'] = innovation_score
+    df.loc[index, 'feasibility_score'] = feasibility_score
+  progress_bar.progress(1.0)
+  st.write("Done!")
+  return df
