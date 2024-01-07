@@ -62,22 +62,26 @@ def table_page():
 
 def flashcard_page():
     st.title('Flashcards')
-    flashcards = st.session_state['data'].to_dict('records')
 
-    selected_index = st.selectbox("Choose a flashcard", range(len(flashcards)), index=st.session_state['flashcard_index'])
-    st.session_state['flashcard_index'] = selected_index
-    # add previous and next buttons
-    # TODO: figure out why this has a 1 click lag
-    col1, col2 = st.columns(2)
-    with col1:
-      if st.button("Previous"):
-          st.session_state['flashcard_index'] = max(0, st.session_state['flashcard_index'] - 1)
-    with col2:
-      if st.button("Next"):
-          st.session_state['flashcard_index'] = min(len(flashcards) - 1, st.session_state['flashcard_index'] + 1)
-    flashcard = flashcards[selected_index]
-    st.subheader(flashcard["problem"])
-    st.write(flashcard["solution"])
+    if st.session_state['data'] is not None:
+      selected_index = st.selectbox("Choose a flashcard", range(len(flashcards)), index=st.session_state['flashcard_index'])
+      st.session_state['flashcard_index'] = selected_index
+      # add previous and next buttons
+      # TODO: figure out why this has a 1 click lag
+      col1, col2 = st.columns(2)
+      with col1:
+        if st.button("Previous"):
+            st.session_state['flashcard_index'] = max(0, st.session_state['flashcard_index'] - 1)
+      with col2:
+        if st.button("Next"):
+            st.session_state['flashcard_index'] = min(len(flashcards) - 1, st.session_state['flashcard_index'] + 1)
+
+      flashcards = st.session_state['data'].to_dict('records')
+      flashcard = flashcards[selected_index]
+      st.subheader(flashcard["problem"])
+      st.write(flashcard["solution"])
+    else:
+        st.write("No data uploaded. Please upload a CSV file in the Upload page.")
    
 
 # ------------------ helper functions ------------------
