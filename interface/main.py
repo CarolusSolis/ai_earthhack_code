@@ -1,132 +1,82 @@
 import os
+import time
 import dotenv
 
 import streamlit as st
 from openai import OpenAI
 import requests
 
+import pandas as pd
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # if the key already exists in the environment variables, it will use that, otherwise it will use the .env file to get the key
 if not OPENAI_API_KEY:
     dotenv.load_dotenv(".env")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+# Initialize session state variables
+if 'data' not in st.session_state:
+    st.session_state['data'] = None
+if 'page' not in st.session_state:
+    st.session_state['page'] = 'Upload'
+if 'uploaded_button_clicked' not in st.session_state:
+  st.session_state['uploaded_button_clicked'] = False
+if 'messages' not in st.session_state:
+  st.session_state['messages'] = []
+if 'thread' not in st.session_state:
+    st.session_state['thread'] = None
+if 'assistant' not in st.session_state:
+    st.session_state['assistant'] = None
+
+client = OpenAI()
+
+# ------------------ Names ------------------
+TABLE_PAGE_NAME = "Ratings Table"
+UPLOAD_PAGE_NAME = "Upload"
+FLASHCARD_PAGE_NAME = "Flashcards"
+
+# ------------------ Pages ------------------
 def main():
-  if 'uploaded_button_clicked' not in st.session_state:
-    st.session_state['uploaded_button_clicked'] = False
-  if 'messages' not in st.session_state:
-    st.session_state['messages'] = []
-  if 'thread' not in st.session_state:
-     st.session_state['thread'] = None
-  if 'assistant' not in st.session_state:
-     st.session_state['assistant'] = None
+  st.sidebar.title("Navigation")
+  page = st.sidebar.radio("Go to", (UPLOAD_PAGE_NAME, TABLE_PAGE_NAME, FLASHCARD_PAGE_NAME))
+  st.session_state['page'] = page
 
-  client = OpenAI()
+  if st.session_state['page'] == UPLOAD_PAGE_NAME:
+    upload_page()
+  elif st.session_state['page'] == TABLE_PAGE_NAME:
+    table_page()
+  elif st.session_state['page'] == FLASHCARD_PAGE_NAME:
+    flashcard_page()
 
-  uploaded_files = st.file_uploader("You can upload multiple PDF files.", 
-                                  type=["pdf"], 
-                                  accept_multiple_files=True,
-                                  label_visibility='visible')
-                          
-  # Button to trigger the file upload process
-  if len(uploaded_files)>0:
-    st.write("After uploading all the files, please click the button below to create an assistant to answer questions about the files.")
-    if st.button('Upload Files'):
-      file_ids = []
-      uploaded_logs = []
-      st.session_state['uploaded_button_clicked'] = True
-      with st.spinner('Uploading Files...'):
-        for uploaded_file in uploaded_files:
-            # Read the content of the uploaded file
-            file_content = uploaded_file.read()
+def upload_page():
+    st.title("Upload CSV File")
+    st.session_state['uploaded_file'] = st.file_uploader("Upload your CSV file here", type="csv")
+    if st.session_state['uploaded_file'] is not None:
+        process_file()
+      
 
-            # Upload a file with an "assistants" purpose
-            oai_uploaded_file = client.files.create(
-                file=file_content,
-                purpose='assistants'
-            )
-            uploaded_log = {"file_name": uploaded_file.name, "file_id": oai_uploaded_file.id}
-            uploaded_logs.append(uploaded_log)
-            # st.write(uploaded_log)
-            file_ids.append(oai_uploaded_file.id)
-        # st.write(uploaded_logs)
-            
-      with st.spinner('Creating Assistant...'):
-        # Add the file to the assistant
-        assistant = client.beta.assistants.create(
-          instructions=f"""
-          You are a helpful assistant to question & answer over multiple files. Here\'s your file_id and file_name mapping:
+def table_page():
+    st.title("Ratings Table")
+    if st.session_state['data'] is not None:
+        st.write("Uploaded Data:")
+        st.dataframe(st.session_state['data'])
+    else:
+        st.write("No data uploaded. Please upload a CSV file in the Upload page.")
 
-          {str(uploaded_logs)}
+def flashcard_page():
+   pass
+   
 
-          Please use this mapping to understand which file does the user is referring to.
-
-          [Note]
-          If you're asked any question without clear reference to the file name, please answer with the most relevant inferring about which file the user is referring to using the above mapping.
-          """, # instructions to the assistant to understand the context and purpose of the assistant
-          model="gpt-4-1106-preview",
-          tools=[{"type": "retrieval"}], # augment with your own custom tools!
-          file_ids=file_ids
-        ) # you need to pass the file_ids as a list when creating the assistant
-        st.session_state['assistant'] = assistant
-        
-        # st.write(st.session_state['assistant'])
-
-        thread = client.beta.threads.create(
-          messages=st.session_state.messages
-        ) # thread is a collection of messages between the user and the assistant
-
-        # st.write(thread)
-        st.session_state['thread'] = thread
-
-  # display chat history 
-  for message in st.session_state.messages:  # this is to show the chat history
-      if message["role"] == "assistant":
-          st.chat_message("assistant").write(message["content"])
-      else:
-          st.chat_message("user").write(message["content"])
-
-  # chat input 
-  if st.session_state['assistant']:
-    if prompt := st.chat_input(placeholder="Enter your message here"):
-        # st.write("prompt", prompt)
-
-        user_message = {
-          "role": "user",
-          "content": prompt
-        }
-
-        # Add the user's response to the chat - frontend
-        st.session_state.messages.append(user_message)
-        # Add the user's response to the thread - backend
-        message = client.beta.threads.messages.create(
-            thread_id=st.session_state['thread'].id,
-            role="user",
-            content=prompt
-          ) # you can add the user's message to the thread using the thread_id
-        
-        # display chat
-        st.chat_message("user").write(prompt)  # this is to show the user's input
-
-        with st.chat_message("assistant"):
-            with st.spinner():
-                # Run the assistant
-                run = client.beta.threads.runs.create(
-                  thread_id=st.session_state['thread'].id,
-                  assistant_id=st.session_state['assistant'].id
-                ) # after adding the user's message to the thread, you can run the assistant to get the assistant's response
-                
-                while run.status != "completed":
-                  run = client.beta.threads.runs.retrieve(
-                    thread_id=st.session_state['thread'].id,
-                    run_id=run.id
-                  ) # you can retrieve the assistant's response when the status is "completed". This part is to make sure that the assistant has completed its response.
-
-                messages = client.beta.threads.messages.list(thread_id=st.session_state['thread'].id)
-                assistant_response = messages.data[0].content[0].text.value # get the most recent message
-  
-                st.session_state.messages.append(
-                    {
-                      "role": "assistant", 
-                      "content": assistant_response # messages are stored in the "data" key with the latest message at the first index
-                    })
-                st.write(assistant_response.replace("$", "\$")) # display the assistant's response
+# ------------------ helper functions ------------------
+# Function to process the uploaded CSV file
+def process_file():
+    uploaded_file = st.session_state['uploaded_file']
+    if uploaded_file is not None:
+        # Reading the CSV file into a DataFrame
+        df = pd.read_csv(uploaded_file)
+        # Selecting only the columns that we need
+        df = df[['problem', 'solution']]
+        # Store the DataFrame in the session state
+        st.session_state['data'] = df
+        # Automatically switch to the display page after uploading 
+        # TODO: figure out why this doesn't work
+        st.session_state['page'] = TABLE_PAGE_NAME
