@@ -16,14 +16,16 @@ Your are an idea filter is designed to weed out ideas that are sloppy, off-topic
 The intended audience is venture capitalists.
 When evaluating ideas you will first concisely evaluate it on each criterion, then output a word of recommendation: "pass" or "fail" for each criterion and overall
 The output format will be like:
-<evaluation category 1>: ... /PASS/ or /FAIL/
-<evaluation category 2>: ... /PASS/ or /FAIL/
+<evaluation category 1>: ... </PASS/ or /FAIL/>
+<evaluation category 2>: ... </PASS/ or /FAIL/>
 <...>
+FEASIBILITY: <score out of 5>
+INNOVATION: <score out of 5>
 OVERALL: /PASS/ or /FAIL/"
 """
 
 SUMMARY_INSTRUCTION = """
-Your are an idea summarizer is designed to summarize the idea into 1-2 sentences.
+Your are an idea summarizer is designed to summarize the idea into a sentence.
 The intended audience is venture capitalists.
 Please note that the summary should be concise and to the point, and should not include any information that is not already in the idea.
 """
@@ -71,7 +73,7 @@ class LLM():
     
     def filter(self, idea):
         """
-        returns a tuple: (BOOL(pass or not), message)
+        returns a dictionary
         """
         response = self.get_filter_response(idea)
         # extract the last /PASS/ or /FAIL/ from the response
@@ -83,4 +85,31 @@ class LLM():
             return (True, response)
         # extract the pass/fail
         pass_fail = response[last:last+6]
-        return (pass_fail == "/PASS/", response)
+        # extract innovation and feasibility scores
+        innovation_score = extract_score(response, "INNOVATION: ")
+        feasibility_score = extract_score(response, "FEASIBILITY: ")
+        return {
+            "passed": pass_fail == "/PASS/",
+            "response": response,
+            "innovation_score": innovation_score,
+            "feasibility_score": feasibility_score,
+        }
+
+
+def extract_score(response, keyword):
+            """
+            extracts a score from the response
+            the score is the number after the keyword: keyword <score>
+            if no score is found, return None
+            """
+            keyword_index = response.find(keyword)
+            if keyword_index == -1:
+                return None
+            score_index = keyword_index + len(keyword)
+            score = response[score_index:score_index+1]
+            # try to convert to int, if not possible, return None
+            try:
+                score = int(score)
+            except ValueError:
+                return None
+            return score

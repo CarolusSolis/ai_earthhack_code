@@ -51,7 +51,6 @@ def upload_page():
 def table_page():
     st.title("Ratings Table")
     if st.session_state['data'] is not None:
-        st.write("Uploaded Data:")
         st.dataframe(st.session_state['data'])
         # TODO: add pagination
     else:
@@ -76,8 +75,9 @@ def flashcard_page():
             st.session_state['flashcard_index'] = min(len(flashcards) - 1, st.session_state['flashcard_index'] + 1)
 
       flashcard = flashcards[selected_index]
-      st.subheader(flashcard["problem"])
-      st.write(flashcard["solution"])
+      st.subheader(flashcard["summary"])
+      st.write("Problem: " + str(flashcard["problem"]))
+      st.write("Solution: " + str(flashcard["solution"]))
     else:
         st.write("No data uploaded. Please upload a CSV file in the Upload page.")
    
@@ -92,7 +92,7 @@ def process_file():
         # Analyze the data
         df = analyze(df)
         # Selecting only the columns that we need
-        df = df[['summary', 'problem', 'solution', 'analysis']]
+        df = df[['summary', 'problem', 'solution', 'analysis', 'innovation_score', 'feasibility_score']]
         # Store the DataFrame in the session state
         st.session_state['data'] = df
         # Automatically switch to the display page after uploading 
@@ -102,18 +102,25 @@ def process_file():
 def analyze(df):
   print("Analyzing...")
   # Initialize a progress bar
-  st.write("Analyzing...")
+  st.write("Analyzing... each entry takes about 10 seconds")
   progress_bar = st.progress(0)
   length = len(df)  # length of df changes as we drop rows
   for index, row in tqdm(df.iterrows(), total=length):
     progress = index / length
     progress_bar.progress(progress)
 
-    passed, response = llm.filter(row)
+    filter_response = llm.filter(row)
+    response = filter_response['response']
+    passed = filter_response['passed']
+    innovation_score = filter_response['innovation_score']
+    feasibility_score = filter_response['feasibility_score']
     if not passed:
         df.drop(index, inplace=True)
         continue
     df.loc[index, 'summary'] = llm.get_summary_response(row)
     df.loc[index, 'analysis'] = response
+    df.loc[index, 'innovation_score'] = innovation_score
+    df.loc[index, 'feasibility_score'] = feasibility_score
   progress_bar.progress(1.0)
+  st.write("Done!")
   return df
