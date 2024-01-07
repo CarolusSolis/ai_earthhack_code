@@ -82,9 +82,10 @@ class LLM():
         last = max(last_pass, last_fail)
         # if no pass or fail, return true
         if last == -1:
-            return (True, response)
-        # extract the pass/fail
-        pass_fail = response[last:last+6]
+            pass_fail = "/PASS/"
+        else:
+            # extract the pass/fail
+            pass_fail = response[last:last+6]
         # extract innovation and feasibility scores
         innovation_score = extract_score(response, "INNOVATION: ")
         feasibility_score = extract_score(response, "FEASIBILITY: ")
