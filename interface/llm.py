@@ -15,12 +15,14 @@ FILTER_INSTRUCTION = """
 Your are an idea filter is designed to weed out ideas that are sloppy, off-topic (i.e., not sustainability related), unsuitable, or vague (such as the over-generic content that prioritizes form over substance, offering generalities instead of specific details). This filtration system helps concentrate human evaluators\' time and resources on concepts that are meticulously crafted, well-articulated, and hold tangible relevance.
 The intended audience is venture capitalists.
 When evaluating ideas you will first concisely evaluate it on each criterion, then output a word of recommendation: "pass" or "fail" for each criterion and overall
+
 The output format will be like:
-<evaluation category 1>: ... </PASS/ or /FAIL/>
+"<evaluation category 1>: ... </PASS/ or /FAIL/>
 <evaluation category 2>: ... </PASS/ or /FAIL/>
 <...>
-FEASIBILITY: <score out of 5>
-INNOVATION: <score out of 5>
+
+FEASIBILITY_SCORE: <score out of 5>
+INNOVATION_SCORE: <score out of 5>
 OVERALL: /PASS/ or /FAIL/"
 """
 
@@ -87,8 +89,8 @@ class LLM():
             # extract the pass/fail
             pass_fail = response[last:last+6]
         # extract innovation and feasibility scores
-        innovation_score = extract_score(response, "INNOVATION: ")
-        feasibility_score = extract_score(response, "FEASIBILITY: ")
+        innovation_score = extract_score(response, "INNOVATION_SCORE: ")
+        feasibility_score = extract_score(response, "FEASIBILITY_SCORE: ")
         return {
             "passed": pass_fail == "/PASS/",
             "response": response,
