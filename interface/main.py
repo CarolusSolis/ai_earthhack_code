@@ -18,14 +18,10 @@ if 'data' not in st.session_state:
     st.session_state['data'] = None
 if 'page' not in st.session_state:
     st.session_state['page'] = 'Upload'
-if 'uploaded_button_clicked' not in st.session_state:
-  st.session_state['uploaded_button_clicked'] = False
-if 'messages' not in st.session_state:
-  st.session_state['messages'] = []
-if 'thread' not in st.session_state:
-    st.session_state['thread'] = None
-if 'assistant' not in st.session_state:
-    st.session_state['assistant'] = None
+if 'table_page' not in st.session_state:
+    st.session_state['table_page'] = 0
+if 'flashcard_index' not in st.session_state:
+    st.session_state['flashcard_index'] = 0
 
 client = OpenAI()
 
@@ -59,11 +55,29 @@ def table_page():
     if st.session_state['data'] is not None:
         st.write("Uploaded Data:")
         st.dataframe(st.session_state['data'])
+        # TODO: add pagination
     else:
         st.write("No data uploaded. Please upload a CSV file in the Upload page.")
 
+
 def flashcard_page():
-   pass
+    st.title('Flashcards')
+    flashcards = st.session_state['data'].to_dict('records')
+
+    selected_index = st.selectbox("Choose a flashcard", range(len(flashcards)), index=st.session_state['flashcard_index'])
+    st.session_state['flashcard_index'] = selected_index
+    # add previous and next buttons
+    # TODO: figure out why this has a 1 click lag
+    col1, col2 = st.columns(2)
+    with col1:
+      if st.button("Previous"):
+          st.session_state['flashcard_index'] = max(0, st.session_state['flashcard_index'] - 1)
+    with col2:
+      if st.button("Next"):
+          st.session_state['flashcard_index'] = min(len(flashcards) - 1, st.session_state['flashcard_index'] + 1)
+    flashcard = flashcards[selected_index]
+    st.subheader(flashcard["problem"])
+    st.write(flashcard["solution"])
    
 
 # ------------------ helper functions ------------------
@@ -73,10 +87,16 @@ def process_file():
     if uploaded_file is not None:
         # Reading the CSV file into a DataFrame
         df = pd.read_csv(uploaded_file)
+        # Analyze the data
+        df = analyze(df)
         # Selecting only the columns that we need
-        df = df[['problem', 'solution']]
+        df = df[['problem', 'solution']]  # TODO: add whatever columns we want to display
         # Store the DataFrame in the session state
         st.session_state['data'] = df
         # Automatically switch to the display page after uploading 
         # TODO: figure out why this doesn't work
         st.session_state['page'] = TABLE_PAGE_NAME
+
+def analyze(df):
+   # TODO: add llama2 or gpt4 api calls here, use these to fill out df['rating'], df['analysis'] or whichever columns we want to add
+   return df
