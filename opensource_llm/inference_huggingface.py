@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import pandas as pd
 
@@ -19,26 +20,6 @@ context = (
     'OVERALL: /PASS/ or /FAIL/'
 )
 
-# problem = "PLASTIC RECYCLING"
-# solution = "PLASTIC PRODUCTS RECYCLING PROCESS"
-
-# problem = 'Shrimp shells waste'
-# solution = 'produce 4 products fro shrimp shells'
-
-# problem = 'This solution helps organizers of various events, conferences and concerts to be ego prepared so that no catastrophe may arise '
-# solution = 'Event Changing'
-
-# problem = 'Today, millions of tons of textile waste end up in landfill, leading to severe environmental damage. The fashion industry is one of the most polluting industries in the world and is primarily linear, meaning it produces a significant amount of waste that is not effectively reused or recycled.'
-# solution = "A 'Clothes-as-a-Service' model could transform the fashion industry. Under this model, brands maintain ownership of the clothes and lease them to customers for a period. This service allows customers to get the style and variety they want, discouraging the tendency for impulse purchases that end up in the landfill. Once clothes are returned, they are cleaned, repaired, and leased again. When they are no longer rentable, these clothes can be recycled in a way that keeps the raw materials in the cycle. This model also offers an opportunity for companies to invest in more durable, high-quality garments, which are more environmental-friendly."
-
-# problem = problem.strip()
-# solution = solution.strip()
-# prompt = (
-#     "[INST]<> "
-#     f'{context}<>\n'
-#     f'The texs is: ```problem: {problem} and solution: {solution}```\n'
-#     "[/INST]\n"
-# )
 
 def tokenize_mistral_instruct(context, problem, solution, tokenizer):
     chat = [
@@ -69,7 +50,11 @@ def tokenize_zephyr(context, problem, solution, tokenizer):
 
 
 if __name__ == '__main__':
-    dataset = 'AI EarthHack Dataset.csv'
+    if len(sys.argv) > 1:
+        dataset = sys.argv[1]
+    else:
+        dataset = 'AI EarthHack Dataset.csv'
+
     dataset = pd.read_csv(dataset, encoding='latin-1')
 
     # model_name = 'mistralai/Mistral-7B-v0.1'

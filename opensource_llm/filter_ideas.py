@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -29,7 +30,11 @@ def find_failure(output):
     ])
 
 if __name__ == '__main__':
-    dataset = 'AI EarthHack Dataset.csv'
+    if len(sys.argv) > 1:
+        dataset = sys.argv[1]
+    else:
+        dataset = 'AI EarthHack Dataset.csv'
+
     df = pd.read_csv(dataset, encoding='latin-1')
     verbose_outputs = []
     fails = []

@@ -1,0 +1,5 @@
+transformers
+bitsandbytes>=0.39.0
+accelerate
+scipy
+pandas
