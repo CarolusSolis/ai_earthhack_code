@@ -7,6 +7,7 @@ from openai import OpenAI
 import requests
 
 import pandas as pd
+from tqdm import tqdm
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # if the key already exists in the environment variables, it will use that, otherwise it will use the .env file to get the key
 if not OPENAI_API_KEY:
@@ -104,7 +105,8 @@ def process_file():
 
 def analyze(df):
    # TODO: add llama2 or gpt4 api calls here, use these to fill out df['rating'], df['analysis'] or whichever columns we want to add
-   for index, row in df.iterrows():
+   # add a summary column
+   for index, row in tqdm(df.iterrows()):
       # do api call, fill in df['rating'] and df['analysis'], discard filtered rows
       # requests.get(...)  # backend api call
       pass
