@@ -59,9 +59,9 @@ def table_page():
 
 def flashcard_page():
     st.title('Flashcards')
-    flashcards = st.session_state['data'].to_dict('records')
 
     if st.session_state['data'] is not None:
+      flashcards = st.session_state['data'].to_dict('records')
       selected_index = st.selectbox("Choose a flashcard", range(len(flashcards)), index=st.session_state['flashcard_index'])
       st.session_state['flashcard_index'] = selected_index
       # add previous and next buttons
@@ -79,7 +79,7 @@ def flashcard_page():
       st.write("Problem: " + str(flashcard["problem"]))
       st.write("Solution: " + str(flashcard["solution"]))
     else:
-        st.write("No data uploaded. Please upload a CSV file in the Upload page.")
+      st.write("No data uploaded. Please upload a CSV file in the Upload page.")
    
 
 # ------------------ helper functions ------------------
